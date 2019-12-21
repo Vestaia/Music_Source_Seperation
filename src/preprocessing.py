@@ -4,11 +4,16 @@ import numpy as np
 from torch_stft import STFT
 import matplotlib.pyplot as plt
 
-def features(train_f_stft, train_p_stft, target_f_stft, target_p_stft, nsamples=sys.maxsize, windowsize=15):
+def features(train_f_stft, train_p_stft, target_f_stft, target_p_stft, nsamples=sys.maxsize, windowsize=15, random=True):
     nsamples = np.min([nsamples,train_f_stft.shape[-1]-windowsize])
     train = torch.empty((nsamples, 2*train_f_stft.shape[0], train_f_stft.shape[1], windowsize))
     target = torch.empty((nsamples, 2*target_f_stft.shape[0], target_f_stft.shape[1], 1))
-    for m in range(nsamples):
+
+    if random:
+        iterator = np.random.permutation(train.size(0))
+    else:
+        iterator = range(nsamples)
+    for m in iterator[:nsamples]:
         train[m,0] = train_f_stft[0,:,m:m+windowsize]
         train[m,1] = train_f_stft[1,:,m:m+windowsize]
         train[m,2] = train_p_stft[0,:,m:m+windowsize]
@@ -21,9 +26,9 @@ def features(train_f_stft, train_p_stft, target_f_stft, target_p_stft, nsamples=
 
     return train, target
 
-def run(model, data, size = -1):
-    if (size == -1):
-        size = data.shape[0]
+def run(model, data, size = None):
+    if size is None:
+        size = data.size(0)
     output = torch.zeros(size, 4, 1025, 1)
     for n in range(size):
         output[n] = model(data[n:n+1].cuda()).detach().cpu()

@@ -217,7 +217,6 @@ def learn(net, optimizer, X, y, batch_size = 50):
     return losses.item()
 
 
-
 def test(model, X, y, batch_size=50):
 
     calc = LogCoshLoss().cuda()
@@ -275,10 +274,12 @@ def train(model, optimizer, X, y, validation_size, batch_size=100, epochs=1):
         plot_train(trainloss,validation_loss)
         epoch += 1
 
+
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
     if is_best:
         shutil.copyfile(filename, 'model_best.pth.tar')
+
 
 def load_checkpoint(model, optimizer, filename='checkpoint.pth.tar'):
     if os.path.isfile(filename):

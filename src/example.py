@@ -26,31 +26,33 @@ mus_train = musdb.DB(root=path, subsets='train')
 mus_test = musdb.DB(root=path, subsets='test')
 
 model = learn.Net().cuda()
-optim = torch.optim.Adam(model.parameters(), lr=4e-3)
+optim = torch.optim.Adam(model.parameters(), lr=5e-5)
 
-summary(model, (4, 1025, 25), batch_size=10)
+summary(model, (4, 1024, 25), batch_size=10)
 
-stft = STFT(filter_length=2048, hop_length=512)
+stft = STFT(filter_length=4096, hop_length=512)
 
 
-track = mus_train.tracks[5]
+for n in range(50):
+    track = mus_train.tracks[n%4 + 4]
+    mus = torch.FloatTensor(track.audio).T
+    voc = torch.FloatTensor(track.targets['vocals'].audio).T
+
+    mus_f, mus_p = stft.transform(mus)
+    voc_f, voc_p = stft.transform(voc)
+    train, target = preprocessing.features(mus_f, mus_p, voc_f, voc_p, nsamples=4000, windowsize=25, random=True)
+    # train[:,0:2] = torch.log(train[:,0:2]+1)
+    # target[:,0:2] = torch.log(target[:,0:2]+1)
+    learn.train(model, optim, train[:4000], target[:4000], validation_size=200, batch_size=10, epochs=1)
+
+track = mus_train.tracks[7]
 mus = torch.FloatTensor(track.audio).T
 voc = torch.FloatTensor(track.targets['vocals'].audio).T
-
 mus_f, mus_p = stft.transform(mus)
 voc_f, voc_p = stft.transform(voc)
-
-for n in range(200):
-    
-    train, target = preprocessing.features(mus_f, mus_p, voc_f, voc_p, nsamples=4000, windowsize=25, random=True)
-    train[:,0:2] = train[:,0:2]
-    target[:,0:2] = target[:,0:2]
-
-    learn.train(model, optim, train[:2000], target[:2000], validation_size=200, batch_size=10, epochs=1)
-
 train, target = preprocessing.features(mus_f, mus_p, voc_f, voc_p, nsamples=4000, windowsize=25, random=False)
-train[:,0:2] = train[:,0:2]
-target[:,0:2] = target[:,0:2]
+# train[:,0:2] = torch.log(train[:,0:2]+1)
+# target[:,0:2] = torch.log(target[:,0:2]+1)
 
 pred = preprocessing.run(model, train[2000:])
 

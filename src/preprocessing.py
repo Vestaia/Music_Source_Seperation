@@ -29,7 +29,7 @@ def features(train_f_stft, train_p_stft, target_f_stft, target_p_stft, nsamples=
 def run(model, data, size = None):
     if size is None:
         size = data.size(0)
-    output = torch.zeros(size, 4, 1025, 1)
+    output = torch.zeros(size, 4, data.size(2), 1)
     for n in range(size):
         output[n] = model(data[n:n+1].cuda()).detach().cpu()
     return output.permute(3,1,2,0)[0]

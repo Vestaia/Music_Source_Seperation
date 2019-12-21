@@ -13,10 +13,10 @@ image_size = 64
 nz = 100
 
 # Size of feature maps in generator
-ngf = 64
+ngf = 16
 
 # Size of feature maps in discriminator
-ndf = 64
+ndf = 16
 
 # Number of channels
 nc = 4
@@ -85,14 +85,22 @@ class Discriminator(nn.Module):
         return self.main(input)
 
 
+# class LogCoshLoss(torch.nn.Module):
+#     def __init__(self):
+#         super().__init__()
+
+#     def forward(self, y_t, y_prime_t):
+#         loss = torch.mean(torch.cosh(torch.log(torch.abs(y_t - y_prime_t) + 1)))
+#         return loss
+
+
 class LogCoshLoss(torch.nn.Module):
     def __init__(self):
         super().__init__()
 
     def forward(self, y_t, y_prime_t):
-        loss = torch.mean(torch.cosh(torch.log(torch.abs(y_t - y_prime_t) + 1)))
+        loss = torch.mean(torch.cosh(y_t - y_prime_t))
         return loss
-
 
 def learn(netD, netG, optimD, optimG, data, target, batch_size=10):
     device = torch.device("cuda:0" if (next(netG.parameters()).is_cuda) else "cpu")
@@ -102,7 +110,7 @@ def learn(netD, netG, optimD, optimG, data, target, batch_size=10):
     calc = LogCoshLoss().to(device)
     netD.train()
     netG.train()
-
+    plt.ion()
     for batch in range(np.int(np.floor(len(data)/batch_size))):
         X = data[batch*batch_size:(batch+1)*batch_size].to(device)
         y = target[batch*batch_size:(batch+1)*batch_size].to(device)
@@ -119,7 +127,7 @@ def learn(netD, netG, optimD, optimG, data, target, batch_size=10):
         lossD_fake = calc(output, zeros)
         lossD_fake.backward()
 
-        lossD = lossD_real + lossD_fake
+        lossD = lossD_real #+ lossD_fake
 
         optimD.step()
 
@@ -133,6 +141,9 @@ def learn(netD, netG, optimD, optimG, data, target, batch_size=10):
         D_real.append(lossD_real.item())
         D_losses.append(lossD.item())
         G_losses.append(lossG.item())
+        
+        if(batch%100==0):
+            plot_train(D_losses, G_losses, D_real)
 
 
     return np.mean(D_losses), np.mean(G_losses), np.mean(D_real)
@@ -218,22 +229,25 @@ def train(netD, netG, optimG, optimD, data, target, batch_size=10, validation_si
         print("Train realD:", train_realD[i])
         print("validation realD:", validation_realD[i])
         print("Time:", elapsed)
-        plot_train(train_lossD,validation_lossD, train_lossG, validation_lossG, train_realD, validation_realD)
+        # plot_train(train_lossD, train_lossG, train_realD, validation_lossD, validation_lossG, validation_realD)
         epoch += 1
 
 
-def plot_train(train_lossD, test_lossD, train_lossG, test_lossG, train_realD, test_realD):
+def plot_train(train_lossD,  train_lossG,  train_realD, test_lossD=None, test_lossG=None, test_realD=None):
     plt.clf()
     plt.figure(figsize=(9, 3))
     plt.subplot(131)
     plt.plot(np.linspace(2,len(train_lossD),len(train_lossD)-1), train_lossD[1:], label="trainD")
-    plt.plot(np.linspace(2,len(test_lossD),len(test_lossD)-1), test_lossD[1:], label="testD")
+    if test_lossD is not None:
+        plt.plot(np.linspace(2,len(test_lossD),len(test_lossD)-1), test_lossD[1:], label="testD")
     plt.subplot(132)
     plt.plot(np.linspace(2,len(train_lossG),len(train_lossG)-1), train_lossG[1:], label="trainG")
-    plt.plot(np.linspace(2,len(test_lossG),len(test_lossG)-1), test_lossG[1:], label="testG")
+    if test_lossG is not None:
+        plt.plot(np.linspace(2,len(test_lossG),len(test_lossG)-1), test_lossG[1:], label="testG")
     plt.subplot(133)
     plt.plot(np.linspace(2,len(train_realD),len(train_realD)-1), train_realD[1:], label="trainR")
-    plt.plot(np.linspace(2,len(test_realD),len(test_realD)-1), test_realD[1:], label="testR")
+    if test_realD is not None:
+        plt.plot(np.linspace(2,len(test_realD),len(test_realD)-1), test_realD[1:], label="testR")
     plt.legend()
     display.display(plt.gcf())
     display.clear_output(wait=True)

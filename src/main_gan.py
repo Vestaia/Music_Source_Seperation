@@ -39,9 +39,7 @@ optimG = torch.optim.Adam(netG.parameters(), lr=lr, betas=(beta1, 0.999))
 summary(netD, (4, 1025, 17), batch_size=5)
 summary(netG, (100, 127, 1), batch_size=5)
 
-
 stft = STFT(filter_length=2048, hop_length=512)
-
 
 track = mus_train.tracks[5]
 mus = torch.FloatTensor(track.audio).T
@@ -52,19 +50,23 @@ voc_f, voc_p = stft.transform(voc)
 
 for n in range(1):
     
-    train, target = preprocessing.features(mus_f, mus_p, voc_f, voc_p, nsamples=4000, windowsize=17, random=False)
-    train[:,0:2] = train[:,0:2]
-    target[:,0:2] = target[:,0:2]
+    train, target = preprocessing.features(mus_f, mus_p, voc_f, voc_p, nsamples=10000, windowsize=17, random=True)
+    train[:,0:2] = torch.log(train[:,0:2]+1) 
+    target[:,0:2] = torch.log(target[:,0:2]+1)
 
-    gan.train(netD, netG, optimD, optimG, train[:2000], target[:2000], validation_size=100, batch_size=4, epochs=30)
+    gan.train(netD, netG, optimD, optimG, train[2000:10000], target[2000:10000], validation_size=100, batch_size=4, epochs=30)
 
-# train, target = preprocessing.features(mus_f, mus_p, voc_f, voc_p, nsamples=4000, windowsize=31, random=False)
-# train[:,0:2] = train[:,0:2]
-# target[:,0:2] = target[:,0:2]
 
-pred = preprocessing.run(netD, train[2000:])
+train, target = preprocessing.features(mus_f, mus_p, voc_f, voc_p, nsamples=2000, windowsize=17, random=False)
+train[:,0:2] = torch.log(train[:,0:2]+1) 
+target[:,0:2] = torch.log(target[:,0:2]+1)
 
-source = preprocessing.istft(stft, train[2000:])
+pred = preprocessing.run(netD, train[:2000])
+pred[:,0:2] = torch.exp(pred[:,0:2])-1
+train[:,0:2] = torch.exp(train[:,0:2])-1
+target[:,0:2] = torch.exp(target[:,0:2])-1
+
+source = preprocessing.istft(stft, train[:2000])
 write("source.wav", 44100, source.T)
 
 out = preprocessing.istft(stft, pred)
